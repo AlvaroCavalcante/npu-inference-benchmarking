@@ -67,8 +67,8 @@ def preprocess_frame(frame):
     return frame
 
 
-cap = cv2.VideoCapture("c:/Users/leand/Downloads/walking_2.mp4")
-fps_history = deque(maxlen=45)
+cap = cv2.VideoCapture("c:/Users/leand/Downloads/walking_video.mp4")
+fps_history = deque(maxlen=40)
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -118,12 +118,15 @@ while cap.isOpened():
         for _, row in preds.iterrows():
             x1, y1, x2, y2 = map(int, [row.xmin, row.ymin, row.xmax, row.ymax])
             label = f"{row['name']} {row['confidence']:.2f}"
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 1)
             cv2.putText(frame, label, (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
-    cv2.putText(frame, f"FPS Médio: {avg_fps:.2f}", (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+    cv2.putText(frame, f"FPS Medio: {avg_fps:.2f}", (20, 80),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (24, 56, 217), 3)
+    cv2.putText(frame, f"Dispositivo: GPU", (20, 120),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (24, 56, 217), 3)
+
     cv2.imshow('Detecção de Objetos', frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
