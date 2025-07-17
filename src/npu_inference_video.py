@@ -6,7 +6,7 @@ import time
 import torch
 
 BACKEND = "openvino"
-DEVICE_OPENVINO = "NPU"
+DEVICE_OPENVINO = "CPU"
 DEVICE_TORCH = "cuda" if torch.cuda.is_available() else "cpu"
 CONFIDENCE_THRESHOLD = 0.4
 IOU_THRESHOLD = 0.45
@@ -69,6 +69,10 @@ def preprocess_frame(frame):
 
 cap = cv2.VideoCapture("c:/Users/leand/Downloads/walking_video.mp4")
 fps_history = deque(maxlen=40)
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+out = None
+video_fps = cap.get(cv2.CAP_PROP_FPS)
+
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -76,9 +80,13 @@ while cap.isOpened():
     if not ret:
         break
 
-    original_height, original_width = frame.shape[:2]
+    if out is None:
+        original_height, original_width = frame.shape[:2]
+        out = cv2.VideoWriter('output_video.mp4', fourcc,
+                              video_fps, (original_width, original_height))
+
     input_data = preprocess_frame(frame.copy())
-    start_time = time.perf_counter()
+    inference_start = time.perf_counter()
 
     if BACKEND == "openvino":
         result = compiled_model([input_data])[output_layer]
@@ -86,9 +94,9 @@ while cap.isOpened():
         preds = model(input_data)
         preds = preds.pandas().xyxy[0]
 
-    end_time = time.perf_counter()
+    inference_end = time.perf_counter()
 
-    inference_time = end_time - start_time
+    inference_time = inference_end - inference_start
     fps = 1.0 / inference_time if inference_time > 0 else 0
     fps_history.append(fps)
     avg_fps = sum(fps_history) / len(fps_history)
@@ -127,11 +135,13 @@ while cap.isOpened():
     cv2.putText(frame, f"Dispositivo: GPU", (20, 120),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (24, 56, 217), 3)
 
+    out.write(frame)
     cv2.imshow('Detecção de Objetos', frame)
-
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 print(f"Media de FPS: {avg_fps:.2f}")
 cap.release()
+if out is not None:
+    out.release()
 cv2.destroyAllWindows()
