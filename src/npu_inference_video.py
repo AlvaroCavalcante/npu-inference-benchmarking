@@ -5,7 +5,7 @@ import numpy as np
 import time
 import torch
 
-BACKEND = "openvino"
+BACKEND = "torch"
 DEVICE_OPENVINO = "CPU"
 DEVICE_TORCH = "cuda" if torch.cuda.is_available() else "cpu"
 CONFIDENCE_THRESHOLD = 0.4
@@ -72,9 +72,11 @@ fps_history = deque(maxlen=40)
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 out = None
 video_fps = cap.get(cv2.CAP_PROP_FPS)
+FRAME_INTERVAL = 1.0 / video_fps
 
 
 while cap.isOpened():
+    start_time = time.time()
     ret, frame = cap.read()
 
     if not ret:
@@ -139,6 +141,12 @@ while cap.isOpened():
     cv2.imshow('Detecção de Objetos', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+
+    elapsed = time.time() - start_time
+    sleep_time = FRAME_INTERVAL - elapsed
+    if sleep_time > 0:
+        time.sleep(sleep_time)
+
 
 print(f"Media de FPS: {avg_fps:.2f}")
 cap.release()
