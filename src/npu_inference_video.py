@@ -7,9 +7,7 @@ import queue
 import threading
 import torch
 
-BACKEND = "openvino"
-DEVICE_OPENVINO = "NPU"
-DEVICE_TORCH = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "CPU"
 CONFIDENCE_THRESHOLD = 0.4
 IOU_THRESHOLD = 0.45
 
@@ -93,10 +91,10 @@ class FrameConsumer:
         self.fps_history = deque(maxlen=40)
         self.out = None
 
-        if BACKEND == "openvino":
+        if DEVICE in ["CPU", "NPU"]:
             self.core = ov.Core()
             self.compiled_model = self.core.compile_model(
-                "c:/Users/leand/OneDrive/Área de Trabalho/camera-recall/yolov5l.xml", DEVICE_OPENVINO)
+                "c:/Users/leand/OneDrive/Área de Trabalho/camera-recall/yolov5l.xml", DEVICE)
             self.input_layer = self.compiled_model.input(0)
             self.output_layer = self.compiled_model.output(0)
         else:
@@ -105,7 +103,7 @@ class FrameConsumer:
             self.model.eval()
 
     def preprocess_frame(self, frame):
-        if BACKEND == "openvino":
+        if DEVICE in ["CPU", "NPU"]:
             img_input = cv2.resize(frame, (640, 640))
             img_input = cv2.cvtColor(img_input, cv2.COLOR_RGB2BGR)
             img_input = img_input.transpose((2, 0, 1))
@@ -134,7 +132,7 @@ class FrameConsumer:
             input_data = self.preprocess_frame(frame.copy())
             inference_start = time.perf_counter()
 
-            if BACKEND == "openvino":
+            if DEVICE in ["CPU", "NPU"]:
                 result = self.compiled_model([input_data])[self.output_layer]
             else:
                 preds = self.model(input_data)
@@ -146,7 +144,7 @@ class FrameConsumer:
             self.fps_history.append(fps)
             avg_fps = sum(self.fps_history) / len(self.fps_history)
 
-            if BACKEND == "openvino":
+            if DEVICE in ["CPU", "NPU"]:
                 scale_x = original_width / 640
                 scale_y = original_height / 640
 
@@ -163,9 +161,9 @@ class FrameConsumer:
                     y2 = int(y2 * scale_y)
 
                     label = f"{int(cls_id)} {score:.2f}"
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 1)
                     cv2.putText(frame, label, (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
             else:
                 for _, row in preds.iterrows():
@@ -178,7 +176,7 @@ class FrameConsumer:
 
             cv2.putText(frame, f"FPS Medio: {avg_fps:.2f}", (20, 80),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (24, 56, 217), 3)
-            cv2.putText(frame, f"Dispositivo: {DEVICE_OPENVINO}", (20, 120),
+            cv2.putText(frame, f"Dispositivo: {DEVICE}", (20, 120),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (24, 56, 217), 3)
 
             self.out.write(frame)
